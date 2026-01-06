@@ -1,0 +1,15 @@
+*.iml
+.gradle
+.idea
+.DS_Store
+build
+captures
+.externalNativeBuild
+.cxx
+local.properties
+xcuserdata
+.kotlin
+# local reference clone
+.cetus-aggregator
+#So we don't accidentally commit our private keys
+*.gpg
