@@ -213,7 +213,8 @@ class AggregatorClient(
 
       for (flattenedPath in processedData.flattenedPaths) {
         val path = flattenedPath.path
-        when (path.provider) {
+        val provider = normalizedProvider(path)
+        when (provider) {
           "CETUS" -> cetusRouter.swap(dsl, flattenedPath, swapCtx)
           "KRIYA" -> kriyaV2Router.swap(dsl, flattenedPath, swapCtx)
           "FLOWXV2" -> flowxV2Router.swap(dsl, flattenedPath, swapCtx)
@@ -420,6 +421,28 @@ class AggregatorClient(
       publishedAt = obj.stringOrNull("published_at"),
       extendedDetails = obj["extended_details"] as? JsonObject,
     )
+  }
+
+  private fun normalizedProvider(path: Path): String {
+    val raw = path.provider.trim()
+    if (raw.isEmpty()) return raw
+    val upper = raw.uppercase()
+    return when (upper) {
+      "FLOWX" -> resolveFlowxVersion(path.version)
+      "FLOWX_V2", "FLOWX-V2" -> "FLOWXV2"
+      "FLOWX_V3", "FLOWX-V3" -> "FLOWXV3"
+      else -> upper
+    }
+  }
+
+  private fun resolveFlowxVersion(version: String?): String {
+    val normalized = version?.trim()?.lowercase()
+    return when {
+      normalized == null -> "FLOWXV2"
+      normalized.contains("3") -> "FLOWXV3"
+      normalized.contains("2") -> "FLOWXV2"
+      else -> "FLOWXV2"
+    }
   }
 
   private fun applyOverlayFee(routerData: RouterDataV3): RouterDataV3 {
