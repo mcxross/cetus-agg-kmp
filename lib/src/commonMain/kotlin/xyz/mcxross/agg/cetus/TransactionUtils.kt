@@ -523,16 +523,24 @@ internal class HaedalPmmRouter(private val pythPriceIds: Map<String, String>) {
     val path = flattenedPath.path
     val publishedAt = path.publishedAt ?: error("Haedal PMM not set publishedAt")
     val extendedDetails = path.extendedDetails ?: error("Extended details not found for Haedal PMM")
-    val basePriceSeed =
-      extendedDetails.stringOrNull("haedal_pmm_base_price_seed")
-        ?: error("Haedal PMM base price seed not supported")
-    val quotePriceSeed =
-      extendedDetails.stringOrNull("haedal_pmm_quote_price_seed")
-        ?: error("Haedal PMM quote price seed not supported")
     val basePriceId =
-      pythPriceIds[basePriceSeed] ?: error("Haedal HMM requires oracle price IDs for both coins")
+      resolvePriceInfoId(
+        extendedDetails = extendedDetails,
+        pythPriceIds = pythPriceIds,
+        idKeys = arrayOf("haedal_pmm_base_price_id", "haedal_pmm_base_price_info_id"),
+        seedKeys = arrayOf("haedal_pmm_base_price_seed"),
+        missingSeedMessage = "Haedal PMM base price seed not supported",
+        missingIdMessage = "Haedal HMM requires oracle price IDs for both coins",
+      )
     val quotePriceId =
-      pythPriceIds[quotePriceSeed] ?: error("Haedal HMM requires oracle price IDs for both coins")
+      resolvePriceInfoId(
+        extendedDetails = extendedDetails,
+        pythPriceIds = pythPriceIds,
+        idKeys = arrayOf("haedal_pmm_quote_price_id", "haedal_pmm_quote_price_info_id"),
+        seedKeys = arrayOf("haedal_pmm_quote_price_seed"),
+        missingSeedMessage = "Haedal PMM quote price seed not supported",
+        missingIdMessage = "Haedal HMM requires oracle price IDs for both coins",
+      )
     val (coinAType, coinBType) = path.coinTypes()
     val amountIn = flattenedPath.amountInForPath()
 
@@ -900,11 +908,21 @@ internal class MetastableRouter(
         METASTABLE_MUSD_TYPE,
         METASTABLE_METH_TYPE -> {
           extendedDetails.stringOrNull("metastable_price_seed")?.let { seed ->
-            val priceId = pythPriceIds[seed] ?: error("Invalid Pyth price feed: $seed")
+            val priceId =
+              resolvePriceInfoIdWithFallback(
+                seed = seed,
+                pythPriceIds = pythPriceIds,
+                missingIdMessage = "Invalid Pyth price feed: $seed",
+              )
             depositArgs.add(`object`(priceId))
           }
           extendedDetails.stringOrNull("metastable_eth_price_seed")?.let { seed ->
-            val priceId = pythPriceIds[seed] ?: error("Invalid Pyth price feed: $seed")
+            val priceId =
+              resolvePriceInfoIdWithFallback(
+                seed = seed,
+                pythPriceIds = pythPriceIds,
+                missingIdMessage = "Invalid Pyth price feed: $seed",
+              )
             depositArgs.add(`object`(priceId))
           }
           depositArgs.add(clock())
@@ -1120,11 +1138,15 @@ internal class HaedalHmmV2Router(private val pythPriceIds: Map<String, String>) 
     val publishedAt = path.publishedAt ?: error("Haedal HMM V2 not set publishedAt")
     val extendedDetails =
       path.extendedDetails ?: error("Extended details not found for Haedal HMM V2")
-    val basePriceSeed =
-      extendedDetails.stringOrNull("haedalhmmv2_base_price_seed")
-        ?: error("Haedal HMM V2 base price seed not supported")
     val basePriceId =
-      pythPriceIds[basePriceSeed] ?: error("Haedal HMM V2 requires oracle price IDs for base coin")
+      resolvePriceInfoId(
+        extendedDetails = extendedDetails,
+        pythPriceIds = pythPriceIds,
+        idKeys = arrayOf("haedalhmmv2_base_price_id", "haedal_hmm_v2_base_price_id"),
+        seedKeys = arrayOf("haedalhmmv2_base_price_seed"),
+        missingSeedMessage = "Haedal HMM V2 base price seed not supported",
+        missingIdMessage = "Haedal HMM V2 requires oracle price IDs for base coin",
+      )
     val (coinAType, coinBType) = path.coinTypes()
     val amountIn = flattenedPath.amountInForPath()
 
@@ -1230,4 +1252,39 @@ private fun JsonObject.booleanOrNull(vararg keys: String): Boolean? {
     }
   }
   return null
+}
+
+private fun resolvePriceInfoId(
+  extendedDetails: JsonObject,
+  pythPriceIds: Map<String, String>,
+  idKeys: Array<String>,
+  seedKeys: Array<String>,
+  missingSeedMessage: String,
+  missingIdMessage: String,
+): String {
+  extendedDetails.stringOrNull(*idKeys)?.let { return it }
+  val seed = extendedDetails.stringOrNull(*seedKeys) ?: error(missingSeedMessage)
+  return pythPriceIds[seed] ?: error(missingIdMessage)
+}
+
+private fun resolvePriceInfoIdWithFallback(
+  seed: String,
+  pythPriceIds: Map<String, String>,
+  missingIdMessage: String,
+): String {
+  pythPriceIds[seed]?.let { return it }
+  if (seed.looksLikeObjectId()) {
+    return seed
+  }
+  error(missingIdMessage)
+}
+
+private fun String.looksLikeObjectId(): Boolean {
+  if (!startsWith("0x") || length != 66) return false
+  for (i in 2 until length) {
+    val c = this[i]
+    val isHex = (c in '0'..'9') || (c in 'a'..'f') || (c in 'A'..'F')
+    if (!isHex) return false
+  }
+  return true
 }

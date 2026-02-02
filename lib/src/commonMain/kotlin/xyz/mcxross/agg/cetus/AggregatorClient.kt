@@ -19,6 +19,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -258,12 +259,7 @@ class AggregatorClient(
   }
 
   suspend fun findRoutes(params: FindRouterParams): RouterDataV3? {
-    val response =
-      if (params.liquidityChanges.isNullOrEmpty()) {
-        getRouter(params)
-      } else {
-        postRouterWithLiquidityChanges(params)
-      } ?: return null
+    val response = resolveFindRoutesResponse(params) ?: return null
 
     if (!response.status.isSuccess()) {
       val errorCode =
@@ -312,51 +308,111 @@ class AggregatorClient(
     httpClient.close()
   }
 
-  private suspend fun getRouter(params: FindRouterParams) =
-    try {
-      httpClient.get(buildFindRoutesUrl(params))
-    } catch (_: Exception) {
-      null
+  private suspend fun resolveFindRoutesResponse(params: FindRouterParams): HttpResponse? {
+    if (!params.liquidityChanges.isNullOrEmpty()) {
+      return postRouterWithLiquidityChanges(params)
     }
 
-  private suspend fun postRouterWithLiquidityChanges(params: FindRouterParams) =
-    try {
-      val fromCoin = completionCoin(params.from)
-      val targetCoin = completionCoin(params.target)
-      val providersStr = params.providers?.joinToString(",")
-      val request = buildJsonObject {
-        put("from", JsonPrimitive(fromCoin))
-        put("target", JsonPrimitive(targetCoin))
-        put("amount", params.amount.toJsonAmount())
-        put("by_amount_in", JsonPrimitive(params.byAmountIn))
-        params.depth?.let { put("depth", JsonPrimitive(it)) }
-        params.splitAlgorithm?.let { put("split_algorithm", JsonPrimitive(it)) }
-        params.splitFactor?.let { put("split_factor", JsonPrimitive(it)) }
-        params.splitCount?.let { put("split_count", JsonPrimitive(it)) }
-        providersStr?.let { put("providers", JsonPrimitive(it)) }
-        put(
-          "liquidity_changes",
-          JsonArray(
-            params.liquidityChanges.orEmpty().map { change ->
-              buildJsonObject {
-                put("pool", JsonPrimitive(change.poolID))
-                put("tick_lower", JsonPrimitive(change.tickLower))
-                put("tick_upper", JsonPrimitive(change.tickUpper))
-                put("delta_liquidity", JsonPrimitive(change.deltaLiquidity))
-              }
+    val getResponse = getRouter(params)
+    if (getResponse == null) {
+      return postRouterWithLiquidityChanges(params)
+    }
+
+    if (getResponse.status.isSuccess()) {
+      return getResponse
+    }
+
+    return if (shouldRetryRouteRequestWithPost(getResponse.status)) {
+      postRouterWithLiquidityChanges(params) ?: getResponse
+    } else {
+      getResponse
+    }
+  }
+
+  private fun shouldRetryRouteRequestWithPost(status: HttpStatusCode): Boolean {
+    return status == HttpStatusCode.BadRequest ||
+      status == HttpStatusCode.Forbidden ||
+      status == HttpStatusCode.NotFound ||
+      status == HttpStatusCode.RequestURITooLong ||
+      status.value == 431
+  }
+
+  private suspend fun getRouter(params: FindRouterParams): HttpResponse? {
+    val url = buildFindRoutesUrl(params)
+    return executeWithFallbackRequest(
+      primary = { httpClient.get(url) },
+      fallback = { client -> client.get(url) },
+    )
+  }
+
+  private suspend fun postRouterWithLiquidityChanges(params: FindRouterParams): HttpResponse? {
+    val fromCoin = completionCoin(params.from)
+    val targetCoin = completionCoin(params.target)
+    val providersStr = params.providers?.joinToString(",")
+    val request = buildJsonObject {
+      put("from", JsonPrimitive(fromCoin))
+      put("target", JsonPrimitive(targetCoin))
+      put("amount", params.amount.toJsonAmount())
+      put("by_amount_in", JsonPrimitive(params.byAmountIn))
+      params.depth?.let { put("depth", JsonPrimitive(it)) }
+      params.splitAlgorithm?.let { put("split_algorithm", JsonPrimitive(it)) }
+      params.splitFactor?.let { put("split_factor", JsonPrimitive(it)) }
+      params.splitCount?.let { put("split_count", JsonPrimitive(it)) }
+      providersStr?.let { put("providers", JsonPrimitive(it)) }
+      put(
+        "liquidity_changes",
+        JsonArray(
+          params.liquidityChanges.orEmpty().map { change ->
+            buildJsonObject {
+              put("pool", JsonPrimitive(change.poolID))
+              put("tick_lower", JsonPrimitive(change.tickLower))
+              put("tick_upper", JsonPrimitive(change.tickUpper))
+              put("delta_liquidity", JsonPrimitive(change.deltaLiquidity))
             }
-          ),
-        )
-        put("v", JsonPrimitive(SDK_VERSION))
-      }
+          }
+        ),
+      )
+      put("v", JsonPrimitive(SDK_VERSION))
+    }
 
-      httpClient.post("${endpoint.trimEnd('/')}/find_routes") {
-        contentType(ContentType.Application.Json)
-        setBody(json.encodeToString(JsonObject.serializer(), request))
-      }
+    val body = json.encodeToString(JsonObject.serializer(), request)
+    val url = "${endpoint.trimEnd('/')}/find_routes"
+
+    return executeWithFallbackRequest(
+      primary = {
+        httpClient.post(url) {
+          contentType(ContentType.Application.Json)
+          setBody(body)
+        }
+      },
+      fallback = { client ->
+        client.post(url) {
+          contentType(ContentType.Application.Json)
+          setBody(body)
+        }
+      },
+    )
+  }
+
+  private suspend fun executeWithFallbackRequest(
+    primary: suspend () -> HttpResponse,
+    fallback: suspend (HttpClient) -> HttpResponse,
+  ): HttpResponse? {
+    try {
+      return primary()
+    } catch (_: Exception) {
+      // Continue and retry once with a fresh default client; this avoids stale transport state.
+    }
+
+    val freshClient = HttpClient()
+    return try {
+      fallback(freshClient)
     } catch (_: Exception) {
       null
+    } finally {
+      freshClient.close()
     }
+  }
 
   private fun buildFindRoutesUrl(params: FindRouterParams): String {
     val fromCoin = completionCoin(params.from)
