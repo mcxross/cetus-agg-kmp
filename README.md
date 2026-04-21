@@ -17,7 +17,8 @@ Add the SDK to your `commonMain` dependencies in `build.gradle.kts`:
 
 ```kotlin
 implementation("xyz.mcxross:aggregator:0.1.0") // Replace with actual version/path
-implementation("xyz.mcxross.ksui:ksui:2.2.0")
+implementation("xyz.mcxross.ksui:ksui:2.2.8-SNAPSHOT")
+implementation("xyz.mcxross.ksui:ksui-core:2.2.8-SNAPSHOT")
 ```
 
 ## Usage
@@ -27,9 +28,9 @@ implementation("xyz.mcxross.ksui:ksui:2.2.0")
 First, set up your Sui client (using `ksui`) and the Aggregator.
 
 ```kotlin
-import xyz.mcxross.ksui.model.SuiConfig
-import xyz.mcxross.ksui.model.SuiSettings
-import xyz.mcxross.ksui.model.Network
+import xyz.mcxross.ksui.core.model.SuiConfig
+import xyz.mcxross.ksui.core.model.SuiSettings
+import xyz.mcxross.ksui.core.model.Network
 import xyz.mcxross.agg.cetus.dsl.Aggregator
 
 // Initialize ksui (Mainnet)

@@ -20,9 +20,9 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
-import xyz.mcxross.ksui.ptb.Argument
-import xyz.mcxross.ksui.ptb.PtbDsl
-import xyz.mcxross.ksui.util.toTypeTag
+import xyz.mcxross.ksui.core.ptb.Argument
+import xyz.mcxross.ksui.core.ptb.PtbDsl
+import xyz.mcxross.ksui.core.util.toTypeTag
 
 private const val MAX_AMOUNT_IN = "18446744073709551615"
 private const val SUI_SYSTEM_STATE = "0x5"
@@ -1262,7 +1262,9 @@ private fun resolvePriceInfoId(
   missingSeedMessage: String,
   missingIdMessage: String,
 ): String {
-  extendedDetails.stringOrNull(*idKeys)?.let { return it }
+  extendedDetails.stringOrNull(*idKeys)?.let {
+    return it
+  }
   val seed = extendedDetails.stringOrNull(*seedKeys) ?: error(missingSeedMessage)
   return pythPriceIds[seed] ?: error(missingIdMessage)
 }
@@ -1272,7 +1274,9 @@ private fun resolvePriceInfoIdWithFallback(
   pythPriceIds: Map<String, String>,
   missingIdMessage: String,
 ): String {
-  pythPriceIds[seed]?.let { return it }
+  pythPriceIds[seed]?.let {
+    return it
+  }
   if (seed.looksLikeObjectId()) {
     return seed
   }

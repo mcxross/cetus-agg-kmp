@@ -37,7 +37,8 @@ kotlin {
 
   sourceSets {
     commonMain.dependencies {
-      implementation(libs.ksui)
+      api(libs.ksui)
+      api(libs.ksui.core)
       implementation(libs.ktor.client.core)
       implementation(libs.kotlinx.serialization.json)
     }

@@ -38,10 +38,10 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import xyz.mcxross.ksui.client.ClientConfig
 import xyz.mcxross.ksui.client.getClient
-import xyz.mcxross.ksui.ptb.Argument
-import xyz.mcxross.ksui.ptb.PtbDsl
+import xyz.mcxross.ksui.core.client.ClientConfig
+import xyz.mcxross.ksui.core.ptb.Argument
+import xyz.mcxross.ksui.core.ptb.PtbDsl
 
 private const val SDK_VERSION = 1010106
 private const val ZERO_AMOUNT = "0"
@@ -485,8 +485,10 @@ class AggregatorClient(
     val upper = raw.uppercase()
     return when (upper) {
       "FLOWX" -> resolveFlowxVersion(path.version)
-      "FLOWX_V2", "FLOWX-V2" -> "FLOWXV2"
-      "FLOWX_V3", "FLOWX-V3" -> "FLOWXV3"
+      "FLOWX_V2",
+      "FLOWX-V2" -> "FLOWXV2"
+      "FLOWX_V3",
+      "FLOWX-V3" -> "FLOWXV3"
       else -> upper
     }
   }

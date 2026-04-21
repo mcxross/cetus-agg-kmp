@@ -17,9 +17,9 @@ package xyz.mcxross.agg.cetus.dsl
 
 import xyz.mcxross.agg.cetus.AggregatorClient
 import xyz.mcxross.agg.cetus.FindRouterParams
-import xyz.mcxross.ksui.ptb.Argument
-import xyz.mcxross.ksui.ptb.ProgrammableTransaction
-import xyz.mcxross.ksui.ptb.ptb
+import xyz.mcxross.ksui.core.ptb.Argument
+import xyz.mcxross.ksui.core.ptb.ProgrammableTransaction
+import xyz.mcxross.ksui.core.ptb.ptb
 
 object Tokens {
   const val SUI = "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI"

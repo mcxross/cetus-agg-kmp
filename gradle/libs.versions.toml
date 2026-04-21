@@ -6,7 +6,7 @@ android-compileSdk = "36"
 vanniktechMavenPublish = "0.35.0"
 ktor = "3.3.3"
 kotlinx-serialization = "1.8.0"
-ksui = "2.2.0"
+ksui = "2.2.8-SNAPSHOT"
 coroutines = "1.10.2"
 kotest = "6.0.7"
 composeMultiplatform = "1.9.3"
@@ -14,6 +14,7 @@ composeMultiplatform = "1.9.3"
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 ksui = { module = "xyz.mcxross.ksui:ksui", version.ref = "ksui" }
+ksui-core = { module = "xyz.mcxross.ksui:ksui-core", version.ref = "ksui" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }

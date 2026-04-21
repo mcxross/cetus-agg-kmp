@@ -22,10 +22,10 @@ import xyz.mcxross.agg.cetus.dsl.Tokens
 import xyz.mcxross.agg.cetus.dsl.percent
 import xyz.mcxross.agg.cetus.dsl.sui
 import xyz.mcxross.ksui.Sui
-import xyz.mcxross.ksui.account.Account
-import xyz.mcxross.ksui.model.Network
-import xyz.mcxross.ksui.model.SuiConfig
-import xyz.mcxross.ksui.model.SuiSettings
+import xyz.mcxross.ksui.core.account.Account
+import xyz.mcxross.ksui.core.model.Network
+import xyz.mcxross.ksui.core.model.SuiConfig
+import xyz.mcxross.ksui.core.model.SuiSettings
 
 class AggregatorIntegrationTest :
   StringSpec({
@@ -47,19 +47,17 @@ class AggregatorIntegrationTest :
     "builds swap tx with DSL" {
       val sui = Sui(SuiConfig(SuiSettings(Network.MAINNET)))
 
-      val signer =
-        Account.import("suiprivkey1...")
+      val signer = Account.import("suiprivkey1...")
 
       val aggregator = Aggregator()
 
-      val tx =
-        aggregator.swap {
-          from = Tokens.SUI
-          to = Tokens.CETUS
-          amount = 0.2.sui
-          slippage = 0.5.percent
-          recipient = signer.address.toString()
-        }
+      val tx = aggregator.swap {
+        from = Tokens.SUI
+        to = Tokens.CETUS
+        amount = 0.2.sui
+        slippage = 0.5.percent
+        recipient = signer.address.toString()
+      }
 
       val res = sui.signAndExecuteTransactionBlock(signer, tx)
 
